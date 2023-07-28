@@ -5,6 +5,10 @@ class Piece {
       if (typeof type !== 'undefined') {
         this.type = type;
       }
+      this.style = {
+        top: y * 80,
+        left: x * 80,
+      };
     }
   }
 

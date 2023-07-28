@@ -13,33 +13,3 @@
     width: 80px;
     height: 80px;
 }
-
-#Chessboard .square img {
-    height: 105%;
-   width: 105%;
-}
-
-#Chessboard .black {
-    background-color: rgb(88, 177, 177);
-}
-
-#Chessboard .white {
-    background-color: rgb(214, 233, 233);
-}
-
-#Chessboard .chessPiece {
-    position: absolute;
-    width: 80px;
-    height: 80px;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 80px;
-}
-
-#Chessboard .chessPiece:hover {
-    cursor: grab;
-}
-
-#Chessboard .chessPiece:active {
-    cursor: grabbing;
-}

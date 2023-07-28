@@ -1,68 +1,69 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {useEffect, useState } from 'react';
 import './Chessboard.css';
 import Piece from './Piece';
+import Square from './square.js';
+import retrieveKeyFromCoordinates from './utilities.js'
 
 const board_width = 8;
 const board_height = 8;
 
-function usePieceMovement() {
-    const [selectedPiece, setSelectedPiece] = useState(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+let selectedPiece = null;
+let prevKey = null;
 
-    const handlePieceMouseDown = (e, piece) => {
-        e.preventDefault();
-        setSelectedPiece(piece);
-        setIsDragging(true);
-  
-        const { left, top } = e.target.getBoundingClientRect();
-        const x = e.clientX - left;
-        const y = e.clientY - top;
-        setDragOffset({ x, y });
-    };
 
-    const handlePieceMouseMove = useCallback((e) => {
-        if (!isDragging || !selectedPiece) return;
-    
-        const { left, top } = e.target.parentElement.getBoundingClientRect();
-        const x = e.clientX - left - dragOffset.x;
-        const y = e.clientY - top - dragOffset.y;
-
-        // Ensure the piece doesn't go outside the board boundaries
-        const maxX = (board_width - 1) * 80;
-        const maxY = (board_height - 1) * 80;
-        const boundedX = Math.min(maxX, Math.max(0, x));
-        const boundedY = Math.min(maxY, Math.max(0, y));
-    
-        setSelectedPiece((prevPiece) => ({
-            ...prevPiece,
-            x: Math.floor(boundedX / 80),
-            y: Math.floor(boundedY / 80),
-        }));
-    }, [isDragging, selectedPiece, dragOffset]);
-
-    const handlePieceMouseUp = useCallback(() => {
-        setIsDragging(false);
-    }, []);
-
-    useEffect(() => {
-        document.addEventListener('mousedown', handlePieceMouseDown);
-        document.addEventListener('mousemove', handlePieceMouseMove);
+function handleMouseDown(e) {
+    const elem = e.target;
+    const x = e.clientX - 50;
+    const y = e.clientY - 50;
+    if (elem.classList.contains("chessPiece")) {
+        selectedPiece = elem
+        const { left, top } = elem.getBoundingClientRect();
         
-        return () => {
-            document.removeEventListener('mousemove', handlePieceMouseMove);
-            document.removeEventListener('mouseup', handlePieceMouseUp);
-        };
-        }, [isDragging, selectedPiece, dragOffset, handlePieceMouseMove, handlePieceMouseUp]);
-    
-        return { handlePieceMouseDown };
-    };
+        selectedPiece.style.position = "absolute";
+        selectedPiece.style.left = `${x - left}px`;
+        selectedPiece.style.top = `${y - top}px`;
+
+        prevKey = `${x + 50},${y + 50}`
+    }
+}
+
+function handleMouseMove(e, pieceArr, setPieceArr) {
+    const elem = e.target;
+    const x = e.clientX;
+    const y = e.clientY;
+    const key = retrieveKeyFromCoordinates(x - 244, y - 53);
+
+    const { left, top } = elem.getBoundingClientRect();
+    if (selectedPiece) {
+        if (key !== prevKey) {
+            const prevX = parseInt(prevKey.split(",")[0]);
+            const prevY = parseInt(prevKey.split(",")[1]);
+            const pieceIndex = pieceArr.findIndex((p) => p.x === prevX && p.y === prevY);
+
+            if (pieceIndex !== -1) {
+                const newX = parseInt(key.split(",")[0]);
+                const newY = parseInt(key.split(",")[1]);
+                const updatedPieceArr = [...pieceArr];
+                updatedPieceArr[pieceIndex].x = newX;
+                updatedPieceArr[pieceIndex].y = newY;
+                setPieceArr(updatedPieceArr);
+            }
+            prevKey = key;
+        }
+        selectedPiece.style.position = "absolute";
+        selectedPiece.style.left = `${x - left}px`;
+        selectedPiece.style.top = `${y - top}px`;
+    }
+}
+
+function handleMouseUp() {
+    selectedPiece = null;
+    prevKey = null;
+}
 
 
 function Chessboard() {
   const [pieceArr, setPieceArr] = useState([]);
-  const { handlePieceMouseDown } = usePieceMovement();
-
   function setInitialPos() {
     const initialPieces = [];
     for (let i = 0; i < board_width; i++) {
@@ -88,53 +89,26 @@ function Chessboard() {
     setInitialPos();
   }, []);
 
-  // eslint-disable-next-line no-unused-vars
-  const renderChessPieces = () => {
-    return pieceArr.map((piece) => (
-      <div
-        key={`${piece.x},${piece.y}`}
-        className="chessPiece"
-        style={{
-          backgroundImage: `url(images/${piece.type}.png)`,
-          top: piece.y * 80,
-          left: piece.x * 80,
-          cursor: 'grab',
-        }}
-        onMouseDown={(event) => handlePieceMouseDown(event, piece)}
-      ></div>
-    ));
-  };
-
   let Board = [];
   for (let i = board_height - 1; i >= 0; i--) {
     for (let j = 0; j < board_width; j++) {
+        const num = j + i 
       let imageSrc = undefined;
       pieceArr.forEach((p) => {
         if (p.x === j && p.y === i) {
           imageSrc = 'images/' + p.type + '.png';
         }
       });
-
-      if ((i + j) % 2 === 0) {
-        Board.push(
-          <div className="square black" key={`${j},${i}`}>
-            {imageSrc && <div style={{ backgroundImage: `url(${imageSrc})` }} className="chessPiece"></div>}
-          </div>
-        );
-      } else {
-        Board.push(
-          <div className="square white" key={`${j},${i}`}>
-            {imageSrc && <div style={{ backgroundImage: `url(${imageSrc})` }} className="chessPiece"></div>}
-          </div>
-        );
-      }
+      Board.push(<Square key={`${i},${j}`} number={num} image={imageSrc}/>)
     }
   }
 
   return (
-  <div
-   id="Chessboard"
-  >
+  <div 
+  onMouseDown={(e) => handleMouseDown(e)}
+  onMouseMove={(e) => handleMouseMove(e, pieceArr, setPieceArr)}
+  onMouseUp={() => handleMouseUp()}
+  id="Chessboard">
     {Board}
     </div>
     );

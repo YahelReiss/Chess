@@ -1,0 +1,29 @@
+.square img {
+    height: 105%;
+   width: 105%;
+}
+
+.black {
+    background-color: rgb(88, 177, 177);
+}
+
+.white {
+    background-color: rgb(214, 233, 233);
+}
+
+.square .chessPiece {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 80px;
+}
+
+.chessPiece:hover {
+    cursor: grab;
+}
+
+.chessPiece:active {
+    cursor: grabbing;
+}
