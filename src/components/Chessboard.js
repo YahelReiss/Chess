@@ -1,4 +1,4 @@
-import React, {useEffect, useState } from 'react';
+import React, {useEffect, useState, useRef } from 'react';
 import './Chessboard.css';
 import Piece from './Piece';
 import Square from './square.js';
@@ -9,7 +9,6 @@ const board_height = 8;
 
 let selectedPiece = null;
 let prevKey = null;
-
 
 function handleMouseDown(e) {
     const elem = e.target;
@@ -23,15 +22,19 @@ function handleMouseDown(e) {
         selectedPiece.style.left = `${x - left}px`;
         selectedPiece.style.top = `${y - top}px`;
 
-        prevKey = `${x + 50},${y + 50}`
+        prevKey  = `${x + 50},${y + 50}`
     }
 }
 
-function handleMouseMove(e, pieceArr, setPieceArr) {
+function handleMouseMove(e, pieceArr, setPieceArr, chessboardRef) {
     const elem = e.target;
+    const chessboardRect = chessboardRef.current.getBoundingClientRect();
+    const offsetX = chessboardRect.left;
+    const offsetY = chessboardRect.top;
+
     const x = e.clientX;
     const y = e.clientY;
-    const key = retrieveKeyFromCoordinates(x - 244, y - 53);
+    const key = retrieveKeyFromCoordinates(x - offsetX, y - offsetY);
 
     const { left, top } = elem.getBoundingClientRect();
     if (selectedPiece) {
@@ -57,13 +60,15 @@ function handleMouseMove(e, pieceArr, setPieceArr) {
 }
 
 function handleMouseUp() {
-    selectedPiece = null;
-    prevKey = null;
+  selectedPiece = null;
+  prevKey = null;
 }
 
 
 function Chessboard() {
   const [pieceArr, setPieceArr] = useState([]);
+  const chessboardRef = useRef(null);
+
   function setInitialPos() {
     const initialPieces = [];
     for (let i = 0; i < board_width; i++) {
@@ -105,8 +110,9 @@ function Chessboard() {
 
   return (
   <div 
+  ref={chessboardRef}
   onMouseDown={(e) => handleMouseDown(e)}
-  onMouseMove={(e) => handleMouseMove(e, pieceArr, setPieceArr)}
+  onMouseMove={(e) => handleMouseMove(e, pieceArr, setPieceArr, chessboardRef)}
   onMouseUp={() => handleMouseUp()}
   id="Chessboard">
     {Board}
