@@ -14,6 +14,10 @@ class Coordinates {
   }
 }
 
+// class to store information about the last move
+// pieceType - string with the name of the piece, e.g "bishop"
+// originalKey - object of type Coordinates that holds the x,y for where the piece came from
+// targetKey - object of type Coordinates that holds the x,y for where the piece is going to
 class LastMove {
   constructor(pieceType, originalKey, targetKey) {
     this.pieceType = pieceType;
@@ -37,23 +41,26 @@ let turn = "W";
 function checkIfLegalMove(targetSquare, pieceArr) {
   const pieceType = getPieceTypeFromStyle(selectedPiece.style.backgroundImage);
   if (pieceType.substring(1) === "pawn") {
-    return checkIfLegalPawnMove(targetSquare, pieceArr, pieceType[0], originalKey.x, originalKey.y);
+    return checkIfLegalPawnMove(targetSquare, pieceArr, pieceType[0]);
   } else if (pieceType.substring(1) === "rook") {
-    return true;
+    return checkIfLegalRookMove(targetSquare, pieceArr);
   } else if (pieceType.substring(1) === "knight") {
-    return true;
+    return checkIfLegalKnightMove(targetSquare, pieceArr);
   } else if (pieceType.substring(1) === "bishop") {
-    return true;
+    return checkIfLegalBishopMove(targetSquare, pieceArr);
   } else if (pieceType.substring(1) === "queen") {
-    return true;
+    return checkIfLegalQueenMove(targetSquare, pieceArr);
   } else if (pieceType.substring(1) === "king") {
-    return true;
+    return checkIfLegalKingMove(targetSquare, pieceArr);
   } 
 }
 
-function checkIfLegalPawnMove(targetSquare, pieceArr, color, currentX, currentY) {
+function checkIfLegalPawnMove(targetSquare, pieceArr, color) {
   const targetX = targetSquare.x;
   const targetY = targetSquare.y;
+
+  const currentX = originalKey.x;
+  const currentY = originalKey.y;
 
   // determine the direction in which the pawn can move based on its color
   const direction = color === "W" ? 1 : -1;
@@ -105,6 +112,127 @@ function checkIfLegalPawnMove(targetSquare, pieceArr, color, currentX, currentY)
   return false; // Move is not legal for the pawn
 }
 
+function checkIfLegalRookMove(targetSquare, pieceArr) {
+  const targetX = targetSquare.x;
+  const targetY = targetSquare.y;
+
+  const currentX = originalKey.x;
+  const currentY = originalKey.y;
+
+  // handle vertical movement
+  if (targetX === currentX && targetY !== currentY) {
+      // loop through the squares between the current and target Y positions to check that the path is clear
+    for (let i = 1; i < Math.abs(targetY - currentY); i++) {
+      const direction = currentY < targetY ? 1 : -1; // 1 for up, -1 fo down
+      if (isOccupied(currentX, currentY + (i*direction), pieceArr)) {
+        return false
+      }
+    }
+    if (!isOccupied(targetX, targetY, pieceArr)) {
+      return true; // free to move to this square
+    }
+    if (isOccupiedByOpponent(targetX, targetY, pieceArr)) {
+      return true; // free to capture
+    }
+  }
+
+  // handle horisontal movement
+  if (targetY === currentY && targetX !== currentX) {
+    // loop through the squares between the current and target X positions to check that the path is clear
+    for (let i = 1; i < Math.abs(targetX - currentX); i++) {
+      const direction = currentX < targetX ? 1 : -1;
+      if (isOccupied(currentX + (i*direction), currentY, pieceArr)) {
+        return false
+      }
+    }
+    if (!isOccupied(targetX, targetY, pieceArr)) {
+      return true; // free to move to this square
+    }
+    if (isOccupiedByOpponent(targetX, targetY, pieceArr)) {
+      return true; // free to capture
+    }
+  }
+  return false;
+}
+
+function checkIfLegalKnightMove(targetSquare, pieceArr) {
+  const targetX = targetSquare.x;
+  const targetY = targetSquare.y;
+
+  const currentX = originalKey.x;
+  const currentY = originalKey.y;
+
+  // check if the move is in the L-shaped pattern of the knight
+  if ((Math.abs(currentX - targetX) === 1 && Math.abs(currentY - targetY) === 2) ||
+      (Math.abs(currentX - targetX) === 2 && Math.abs(currentY - targetY) === 1)) 
+      {
+        // check if the target square is unoccupied or occupied by an opponent's piece
+        if (!isOccupied(targetX, targetY, pieceArr) || isOccupiedByOpponent(targetX, targetY, pieceArr)) {
+          return true;
+        }
+      }
+      return false
+}
+
+function checkIfLegalBishopMove(targetSquare, pieceArr) {
+  const targetX = targetSquare.x;
+  const targetY = targetSquare.y;
+
+  const currentX = originalKey.x;
+  const currentY = originalKey.y;
+
+  // calculate the horizontal and vertical distance between the current position and the target position
+  const deltaX = Math.abs(targetX - currentX);
+  const deltaY = Math.abs(targetY - currentY);
+
+  // deltaX and deltaY must be equal for a legal diagonal move
+  if (deltaX !== deltaY) {
+    return false;
+  }
+
+  // determine the direction of movement (positive or negative) for both x and y axes
+  const xDirection = currentX < targetX ? 1 : -1;
+  const yDirection = currentY < targetY ? 1 : -1;
+
+  // check if there are any pieces on the bishop's path
+  for (let i = 1; i < deltaX; i++) {
+    const intermediateX = currentX + i * xDirection;
+    const intermediateY = currentY + i * yDirection;
+
+    if (isOccupied(intermediateX, intermediateY, pieceArr)) {
+      return false;
+    }
+  }
+
+  // check if the target square is unoccupied or occupied by an opponent's piece
+  if (!isOccupied(targetX, targetY, pieceArr) || isOccupiedByOpponent(targetX, targetY, pieceArr)) {
+    return true;
+  }
+return false;
+}
+
+function checkIfLegalQueenMove(targetSquare, pieceArr) {
+  return checkIfLegalRookMove(targetSquare, pieceArr) || checkIfLegalBishopMove(targetSquare, pieceArr);
+}
+
+function checkIfLegalKingMove(targetSquare, pieceArr) {
+  const targetX = targetSquare.x;
+  const targetY = targetSquare.y;
+
+  const currentX = originalKey.x;
+  const currentY = originalKey.y;
+
+  const deltaX = Math.abs(targetX - currentX);
+  const deltaY = Math.abs(targetY - currentY);
+
+  if ((deltaX === 1 && deltaY === 0) || (deltaX === 0 && deltaY === 1) || (deltaX === 1 && deltaY === 1)) {
+    if (!isOccupied(targetX, targetY, pieceArr) || isOccupiedByOpponent(targetX, targetY, pieceArr)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // helper function to check if a square is occupied by a piece
 function isOccupied(x, y, pieceArr) {
   return pieceArr.some((p) => p.x === x && p.y === y);
@@ -112,7 +240,7 @@ function isOccupied(x, y, pieceArr) {
 
 // helper function to check if a square is occupied by an opponent piece
 function isOccupiedByOpponent(x, y, pieceArr) {
-  return pieceArr.some((p) => p.x === x && p.y === y && p.color !== turn);
+  return pieceArr.some((p) => p.x === x && p.y === y && p.type[0] !== turn);
 }
 
 function handleMouseDown(e, chessboardRef) {
@@ -173,63 +301,70 @@ function handleMouseUp(e, pieceArr, setPieceArr, chessboardRef) {
   const x = e.clientX;
   const y = e.clientY;
   const key = retrieveKeyFromCoordinates(x - offsetX, y - offsetY);
-  const targetSquare = new Coordinates(key[0], key[1])
+
+  // check if the target square is within the bounds of the board
+  if (key[0] < 0 || key[0] >= board_width || key[1] < 0 || key[1] >= board_height) {
+    // abort move - return the selected piece to its original location
+    selectedPiece.style.position = "absolute";
+    selectedPiece.style.left = originalPositionLeft;
+    selectedPiece.style.top = originalPositionTop;
+  } else {
+    const targetSquare = new Coordinates(key[0], key[1]);
+
+    if (selectedPiece) {
+      if (checkIfLegalMove(targetSquare, pieceArr)) {
+        // find the index of the piece in the pieceArr
+        const prevX = parseInt(originalKey.x);
+        const prevY = parseInt(originalKey.y);
+        const pieceIndex = pieceArr.findIndex((p) => p.x === prevX && p.y === prevY);
   
-  if (selectedPiece) {
-    if (checkIfLegalMove(targetSquare, pieceArr)) {
-      // find the index of the piece in the pieceArr
-      const prevX = parseInt(originalKey.x);
-      const prevY = parseInt(originalKey.y);
-      const pieceIndex = pieceArr.findIndex((p) => p.x === prevX && p.y === prevY);
-
-      // update the lastMove object
-      const pieceType = getPieceTypeFromStyle(selectedPiece.style.backgroundImage);
-      lastMove.pieceType = pieceType.substring(1);
-      lastMove.originalKey = originalKey;
-      lastMove.targetKey = targetSquare;
-
-      // update in pieceArr the piece's position on the board and remove captured pieces
-      if (pieceIndex !== -1) {
-          const newX = parseInt(targetSquare.x);
-          const newY = parseInt(targetSquare.y);
-          const updatedPieceArr = [...pieceArr];  
-          updatedPieceArr[pieceIndex].x = newX;
-          updatedPieceArr[pieceIndex].y = newY;
-
-          // check if the move is a capture and if so remove the captured piece
-          const capturedPieceIndex = pieceArr.findIndex(
-            (p) => p.x === newX && p.y === newY && p.type[0] !== updatedPieceArr[pieceIndex].type[0]);
-          if (capturedPieceIndex !== -1) {
-            updatedPieceArr.splice(capturedPieceIndex, 1);
+        // update the lastMove object
+        const pieceType = getPieceTypeFromStyle(selectedPiece.style.backgroundImage);
+        lastMove.pieceType = pieceType.substring(1);
+        lastMove.originalKey = originalKey;
+        lastMove.targetKey = targetSquare;
+  
+        // update in pieceArr the piece's position on the board and remove captured pieces
+        if (pieceIndex !== -1) {
+            const newX = parseInt(targetSquare.x);
+            const newY = parseInt(targetSquare.y);
+            const updatedPieceArr = [...pieceArr];  
+            updatedPieceArr[pieceIndex].x = newX;
+            updatedPieceArr[pieceIndex].y = newY;
+  
+            // check if the move is a capture and if so remove the captured piece
+            const capturedPieceIndex = pieceArr.findIndex(
+              (p) => p.x === newX && p.y === newY && p.type[0] !== updatedPieceArr[pieceIndex].type[0]);
+            if (capturedPieceIndex !== -1) {
+              updatedPieceArr.splice(capturedPieceIndex, 1);
+            }
+            
+            setPieceArr(updatedPieceArr);
           }
-          
-          setPieceArr(updatedPieceArr);
-        }
-
-      // Move the selected piece to the new location.
-      selectedPiece.style.position = "absolute";
-      selectedPiece.style.left = `${x - left}px`;
-      selectedPiece.style.top = `${y - top}px`;
-
-      // switch player turn after the move
-      turn = turn === "W" ? "B" : "W"; // switch turns
-
-      } else {
-      // abort move - return the selected piece to its original location
-      selectedPiece.style.position = "absolute";
-      selectedPiece.style.left = originalPositionLeft;
-      selectedPiece.style.top = originalPositionTop;
-      }
   
+        // move the selected piece to the new location.
+        selectedPiece.style.position = "absolute";
+        selectedPiece.style.left = `${x - left}px`;
+        selectedPiece.style.top = `${y - top}px`;
+  
+        // switch player turn after the move
+        turn = turn === "W" ? "B" : "W"; // switch turns
+  
+        } else {
+        // abort move - return the selected piece to its original location
+        selectedPiece.style.position = "absolute";
+        selectedPiece.style.left = originalPositionLeft;
+        selectedPiece.style.top = originalPositionTop;
+        }
   // reset parameters
   selectedPiece.style.zIndex = "unset";
   selectedPiece = null;
   originalKey = null;
   originalPositionLeft = null;
   originalPositionTop = null;
+    }
   }
 }
-
 
 function Chessboard() {
   const [pieceArr, setPieceArr] = useState([]); // state (array) to keep track of the pieces on the board
