@@ -1,9 +1,12 @@
 class Piece {
-    constructor(x, y, type) {
+    constructor(x, y, color, pieceType) {
       this.x = x;
       this.y = y;
-      if (typeof type !== 'undefined') {
-        this.type = type;
+      if (typeof color !== 'undefined') {
+        this.color = color;
+      }
+      if (typeof pieceType !== 'undefined') {
+        this.pieceType = pieceType;
       }
       this.style = {
         top: y * 80,
