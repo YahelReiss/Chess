@@ -66,7 +66,7 @@ let shortCastelB = true;
 function checkIfLegalMove(originalSquare, targetSquare, piece, pieceArr, setPieceArr) {
   const pieceType = piece.pieceType;
   if (pieceType === PAWN) {
-    return checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, piece.color);
+    return checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, piece.color, setPieceArr);
   } else if (pieceType === ROOK) {
     return checkIfLegalRookMove(originalSquare, targetSquare, pieceArr);
   } else if (pieceType === KNIGHT) {
@@ -80,7 +80,20 @@ function checkIfLegalMove(originalSquare, targetSquare, piece, pieceArr, setPiec
   } 
 }
 
-function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color) {
+// function checkIfNotCheck(pieceArr, setPieceArr) {
+//   const attackingColor = turn === WHITE ? BLACK : WHITE;
+
+//   let king = null;
+//   for (const piece of pieceArr) {
+//     if (piece.color === turn && piece.pieceType === KING) {
+//       king = piece;
+//     }
+//   }
+
+//   return ! isUnderAttack(king.x, king.y, attackingColor, pieceArr, setPieceArr); // return true if there is no check, false otherwise
+// }
+
+function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, setPieceArr) {
   const targetX = targetSquare.x;
   const targetY = targetSquare.y;
 
@@ -89,6 +102,20 @@ function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color) {
 
   // determine the direction in which the pawn can move based on its color
   const direction = color === WHITE ? 1 : -1;
+
+  // check for promotion
+  const promotionRank = turn === WHITE ? board_height - 1 : 0;
+  if (targetSquare.y === promotionRank) {
+    const pawnIndex = pieceArr.findIndex(
+      (p) => p.x === originalSquare.x && p.y === originalSquare.y
+    );
+    if (pawnIndex !== -1) {
+      const updatedPieceArr = [...pieceArr];
+      updatedPieceArr[pawnIndex].pieceType = QUEEN;
+      setPieceArr(updatedPieceArr);
+      return true
+    }
+  }
 
   // check for one square forward validity
   if (targetX === currentX && targetY === currentY + direction && !isOccupied(targetX, targetY, pieceArr)) {
@@ -121,7 +148,8 @@ function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color) {
     Math.abs(lastMove.targetKey.y - lastMove.originalKey.y) === 2 && // The last move moved the pawn two squares forward
     Math.abs(targetX - currentX) === 1 && // Target square is one square diagonally left or right
     targetY === currentY + direction && // Target square is in the correct direction
-    lastMove.targetKey.x === targetX // Target square matches the originalKey stored in lastMove
+    lastMove.targetKey.x === targetX &&// Target square matches the originalKey stored in lastMove
+    lastMove.targetKey.y === currentY
   ) {
     // En passant is a legal move
     // Remove the captured pawn from the pieceArr
@@ -446,13 +474,14 @@ function handleMouseUp(e, pieceArr, setPieceArr, chessboardRef) {
       // find the index of the selected piece in the pieceArr
       const prevX = originalKey.x;
       const prevY = originalKey.y;
-      const pieceIndex = pieceArr.findIndex((p) => p.x === prevX && p.y === prevY);
+      let pieceIndex = pieceArr.findIndex((p) => p.x === prevX && p.y === prevY);
       if (checkIfLegalMove(originalKey, targetSquare, pieceArr[pieceIndex], pieceArr, setPieceArr)) {
         // update the lastMove object
         const pieceType = getPieceTypeFromStyle(selectedPiece.style.backgroundImage);
         lastMove.pieceType = pieceType.substring(1);
         lastMove.originalKey = originalKey;
         lastMove.targetKey = targetSquare;
+        pieceIndex = pieceArr.findIndex((p) => p.x === prevX && p.y === prevY);
   
         // update the piece's position on the board and remove captured pieces
         if (pieceIndex !== -1) {
@@ -495,6 +524,18 @@ function handleMouseUp(e, pieceArr, setPieceArr, chessboardRef) {
     }
   }
 }
+
+// function useStateWithLogging(initialValue) {
+//   const [state, setState] = useState(initialValue);
+
+//   const setStateWithLogging = (newValue) => {
+//     console.log(state);
+//     //console.log(state[0]);
+//     setState(newValue);
+//   };
+
+//   return [state, setStateWithLogging];
+// }
 
 function Chessboard() {
   const [pieceArr, setPieceArr] = useState([]); // state (array) to keep track of the pieces on the board
@@ -540,7 +581,7 @@ function Chessboard() {
           imageSrc = 'images/' + p.color + p.pieceType + '.png';
         }
       });
-      Board.push(<Square key={`${j},${i}`} squareKey={`${j},${i}`} number={num} image={imageSrc}/>)
+      Board.push(<Square key={`${j},${i}`} number={num} image={imageSrc}/>)
     }
   }
 
