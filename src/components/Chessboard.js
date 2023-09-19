@@ -50,6 +50,7 @@ const { PAWN, ROOK, KNIGHT, BISHOP, QUEEN, KING } = PieceType;
 
 const board_width = 8;
 const board_height = 8;
+const initialPieceArr = new Array(board_width).fill(null).map(() => new Array(board_height).fill(null));
 
 let selectedPiece = null;
 let originalKey = null;
@@ -106,15 +107,10 @@ function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, set
   // check for promotion
   const promotionRank = turn === WHITE ? board_height - 1 : 0;
   if (targetSquare.y === promotionRank) {
-    const pawnIndex = pieceArr.findIndex(
-      (p) => p.x === originalSquare.x && p.y === originalSquare.y
-    );
-    if (pawnIndex !== -1) {
-      const updatedPieceArr = [...pieceArr];
-      updatedPieceArr[pawnIndex].pieceType = QUEEN;
-      setPieceArr(updatedPieceArr);
-      return true
-    }
+    const updatedPieceArr = [...pieceArr];
+    updatedPieceArr[originalSquare.x][originalSquare.y].pieceType = QUEEN;
+    setPieceArr(updatedPieceArr);
+    return true
   }
 
   // check for one square forward validity
@@ -153,12 +149,7 @@ function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, set
   ) {
     // En passant is a legal move
     // Remove the captured pawn from the pieceArr
-    const capturedPawnIndex = pieceArr.findIndex(
-      (p) => p.x === lastMove.targetKey.x && p.y === lastMove.targetKey.y
-    );
-    if (capturedPawnIndex !== -1) {
-      pieceArr.splice(capturedPawnIndex, 1);
-    }
+    pieceArr[lastMove.targetKey.x][lastMove.targetKey.y] = null;
     return true;
   }
 
@@ -355,20 +346,22 @@ function checkIfLegalKingMove(originalSquare, targetSquare, pieceArr, setPieceAr
 }
 
 function isUnderAttack(attckedSquareX, attckedSquareY, attackingColor, pieceArr, setPieceArr) {
-  // iterate through all pieces
-  for (const key in pieceArr) {
-    const piece = pieceArr[key];
-    if (piece.color === attackingColor) { // check that it is an opponent's piece
+  // iterate through the board
+  for (let col = 0; col < board_width; col++) {
+    for (let row = 0; row < board_height; row++) {
+      const piece = pieceArr[col][row]
+      if (piece && piece.color === attackingColor) { // check that it is an opponent's piece
       // check if the opponent's piece can legally move to the target square
-      if (piece.pieceType === KING) {
-        if (Math.abs(piece.x - attckedSquareX) <= 1 &&  Math.abs(piece.y - attckedSquareY) <= 1) {
-          return true;
+        if (piece.pieceType === KING) {
+          if (Math.abs(piece.x - attckedSquareX) <= 1 &&  Math.abs(piece.y - attckedSquareY) <= 1) {
+            return true;
+          }
         }
-      }
-      const attckedSquare = new Coordinates(attckedSquareX, attckedSquareY);
-      const originalSquare = new Coordinates(piece.x, piece.y)
-      if (checkIfLegalMove(originalSquare, attckedSquare, piece, pieceArr, setPieceArr)) {
-        return true; // square is under attack
+        const attckedSquare = new Coordinates(attckedSquareX, attckedSquareY);
+        const originalSquare = new Coordinates(piece.x, piece.y)
+        if (checkIfLegalMove(originalSquare, attckedSquare, piece, pieceArr, setPieceArr)) {
+          return true; // square is under attack
+        }
       }
     }
   }
@@ -378,28 +371,32 @@ function isUnderAttack(attckedSquareX, attckedSquareY, attackingColor, pieceArr,
 
 // move a specified piece from its current square to a new square
 function movePiece(originalKey, targetKey, pieceArr, setPieceArr) {
-  const pieceIndex = pieceArr.findIndex((p) => p.x === originalKey.x && p.y === originalKey.y);
-
+  const originalX = originalKey.x;
+  const originalY = originalKey.y;
   const targetX = targetKey.x;
   const targetY = targetKey.y;
 
-  if (pieceIndex !== -1) {
+  const pieceToMove = pieceArr[originalX][originalY];
+
+  if (pieceToMove) {
     // Update the piece's position in the pieceArr
-    const updatedPieceArr = [...pieceArr];  
-    updatedPieceArr[pieceIndex].x = targetX;
-    updatedPieceArr[pieceIndex].y = targetY;
+    const updatedPieceArr = [...pieceArr];
+    updatedPieceArr[originalX][originalY] = null;
+    updatedPieceArr[targetX][targetY] = pieceToMove
+    updatedPieceArr[targetX][targetY].x = targetX
+    updatedPieceArr[targetX][targetY].y = targetY
     setPieceArr(updatedPieceArr);
   }
 }
 
 // helper function to check if a square is occupied by a piece
 function isOccupied(x, y, pieceArr) {
-  return pieceArr.some((p) => p.x === x && p.y === y);
+  return pieceArr[x][y] !== null;
 }
 
 // helper function to check if a square is occupied by an opponent piece
 function isOccupiedByOpponent(x, y, pieceArr) {
-  return pieceArr.some((p) => p.x === x && p.y === y && p.color !== turn);
+  return pieceArr[x][y] !== null && pieceArr[x][y].color !== turn;
 }
 
 function handleMouseDown(e, chessboardRef) {
@@ -474,29 +471,22 @@ function handleMouseUp(e, pieceArr, setPieceArr, chessboardRef) {
       // find the index of the selected piece in the pieceArr
       const prevX = originalKey.x;
       const prevY = originalKey.y;
-      let pieceIndex = pieceArr.findIndex((p) => p.x === prevX && p.y === prevY);
-      if (checkIfLegalMove(originalKey, targetSquare, pieceArr[pieceIndex], pieceArr, setPieceArr)) {
+      if (checkIfLegalMove(originalKey, targetSquare, pieceArr[prevX][prevY], pieceArr, setPieceArr)) {
         // update the lastMove object
         const pieceType = getPieceTypeFromStyle(selectedPiece.style.backgroundImage);
         lastMove.pieceType = pieceType.substring(1);
         lastMove.originalKey = originalKey;
         lastMove.targetKey = targetSquare;
-        pieceIndex = pieceArr.findIndex((p) => p.x === prevX && p.y === prevY);
   
         // update the piece's position on the board and remove captured pieces
-        if (pieceIndex !== -1) {
+        if (pieceArr[prevX][prevY] !== null) {
             const newX = targetSquare.x;
             const newY = targetSquare.y;
-            const updatedPieceArr = [...pieceArr];  
-            updatedPieceArr[pieceIndex].x = newX;
-            updatedPieceArr[pieceIndex].y = newY;
-  
-            // check if the move is a capture and if so remove the captured piece
-            const capturedPieceIndex = pieceArr.findIndex(
-              (p) => p.x === newX && p.y === newY && p.color !== updatedPieceArr[pieceIndex].color);
-            if (capturedPieceIndex !== -1) {
-              updatedPieceArr.splice(capturedPieceIndex, 1);
-            }
+            const updatedPieceArr = [...pieceArr];
+            updatedPieceArr[newX][newY] = pieceArr[prevX][prevY]
+            updatedPieceArr[newX][newY].x = newX
+            updatedPieceArr[newX][newY].y = newY
+            updatedPieceArr[prevX][prevY] = null;
             
             setPieceArr(updatedPieceArr); // update pieceArr
           }
@@ -538,32 +528,37 @@ function handleMouseUp(e, pieceArr, setPieceArr, chessboardRef) {
 // }
 
 function Chessboard() {
-  const [pieceArr, setPieceArr] = useState([]); // state (array) to keep track of the pieces on the board
+  const [pieceArr, setPieceArr] = useState(initialPieceArr); // state (2D array) to keep track of the board
   const chessboardRef = useRef(null); // reference to the chessboard div element
 
   // function to set the initial positions of the chess pieces
   function setInitialPos() {
-    const initialPieces = [];
+    const initialPieceArr = new Array(board_width).fill(null).map(() => new Array(board_height).fill(null));
+
+    // Reset the initial piece array
+    // initialPieceArr.forEach((column, x) => {
+    //   column.fill(null);
+    // });
 
     // push pawns
     for (let i = 0; i < board_width; i++) {
-      initialPieces.push(new Piece(i, 1, WHITE, 'pawn'));
-      initialPieces.push(new Piece(i, 6, BLACK, 'pawn'));
+      initialPieceArr[i][1] = new Piece(i, 1, WHITE, 'pawn');
+      initialPieceArr[i][6] = new Piece(i, 6, BLACK, 'pawn');
     }
     // push the rest of the pieces
     for (let i = 0; i < 2; i++) {
       const type = i === 0 ? WHITE : BLACK;
       const yPos = i === 0 ? 0 : 7;
-      initialPieces.push(new Piece(0, yPos, type, ROOK));
-      initialPieces.push(new Piece(7, yPos, type, ROOK));
-      initialPieces.push(new Piece(1, yPos, type, KNIGHT));
-      initialPieces.push(new Piece(6, yPos, type, KNIGHT));
-      initialPieces.push(new Piece(2, yPos, type, BISHOP));
-      initialPieces.push(new Piece(5, yPos, type, BISHOP));
-      initialPieces.push(new Piece(4, yPos, type, KING));
-      initialPieces.push(new Piece(3, yPos, type, QUEEN));
+      initialPieceArr[0][yPos] = new Piece(0, yPos, type, ROOK);
+      initialPieceArr[7][yPos] = new Piece(7, yPos, type, ROOK);
+      initialPieceArr[1][yPos] = new Piece(1, yPos, type, KNIGHT);
+      initialPieceArr[6][yPos] = new Piece(6, yPos, type, KNIGHT);
+      initialPieceArr[2][yPos] = new Piece(2, yPos, type, BISHOP);
+      initialPieceArr[5][yPos] = new Piece(5, yPos, type, BISHOP);
+      initialPieceArr[4][yPos] = new Piece(4, yPos, type, KING);
+      initialPieceArr[3][yPos] = new Piece(3, yPos, type, QUEEN);
     }
-    setPieceArr(initialPieces);
+    setPieceArr(initialPieceArr);
   }
 
   useEffect(() => {
@@ -574,16 +569,15 @@ function Chessboard() {
   let Board = [];
   for (let i = board_height - 1; i >= 0; i--) {
     for (let j = 0; j < board_width; j++) {
-        const num = j + i 
+      const num = j + i 
       let imageSrc = undefined;
-      pieceArr.forEach((p) => {
-        if (p.x === j && p.y === i) {
-          imageSrc = 'images/' + p.color + p.pieceType + '.png';
-        }
-      });
+      if (pieceArr[j][i] !== null) {
+        imageSrc = 'images/' + pieceArr[j][i].color + pieceArr[j][i].pieceType + '.png';
+      }
       Board.push(<Square key={`${j},${i}`} number={num} image={imageSrc}/>)
     }
   }
+  // console.log("")
 
   // render the chessboard and pieces
   return (
