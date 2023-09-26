@@ -533,32 +533,27 @@ function Chessboard() {
 
   // function to set the initial positions of the chess pieces
   function setInitialPos() {
-    const initialPieceArr = new Array(board_width).fill(null).map(() => new Array(board_height).fill(null));
-
-    // Reset the initial piece array
-    // initialPieceArr.forEach((column, x) => {
-    //   column.fill(null);
-    // });
+    const initialPieceArr2 = new Array(board_width).fill(null).map(() => new Array(board_height).fill(null));
 
     // push pawns
     for (let i = 0; i < board_width; i++) {
-      initialPieceArr[i][1] = new Piece(i, 1, WHITE, 'pawn');
-      initialPieceArr[i][6] = new Piece(i, 6, BLACK, 'pawn');
+      initialPieceArr2[i][1] = new Piece(i, 1, WHITE, 'pawn');
+      initialPieceArr2[i][6] = new Piece(i, 6, BLACK, 'pawn');
     }
     // push the rest of the pieces
     for (let i = 0; i < 2; i++) {
       const type = i === 0 ? WHITE : BLACK;
       const yPos = i === 0 ? 0 : 7;
-      initialPieceArr[0][yPos] = new Piece(0, yPos, type, ROOK);
-      initialPieceArr[7][yPos] = new Piece(7, yPos, type, ROOK);
-      initialPieceArr[1][yPos] = new Piece(1, yPos, type, KNIGHT);
-      initialPieceArr[6][yPos] = new Piece(6, yPos, type, KNIGHT);
-      initialPieceArr[2][yPos] = new Piece(2, yPos, type, BISHOP);
-      initialPieceArr[5][yPos] = new Piece(5, yPos, type, BISHOP);
-      initialPieceArr[4][yPos] = new Piece(4, yPos, type, KING);
-      initialPieceArr[3][yPos] = new Piece(3, yPos, type, QUEEN);
+      initialPieceArr2[0][yPos] = new Piece(0, yPos, type, ROOK);
+      initialPieceArr2[7][yPos] = new Piece(7, yPos, type, ROOK);
+      initialPieceArr2[1][yPos] = new Piece(1, yPos, type, KNIGHT);
+      initialPieceArr2[6][yPos] = new Piece(6, yPos, type, KNIGHT);
+      initialPieceArr2[2][yPos] = new Piece(2, yPos, type, BISHOP);
+      initialPieceArr2[5][yPos] = new Piece(5, yPos, type, BISHOP);
+      initialPieceArr2[4][yPos] = new Piece(4, yPos, type, KING);
+      initialPieceArr2[3][yPos] = new Piece(3, yPos, type, QUEEN);
     }
-    setPieceArr(initialPieceArr);
+    setPieceArr(initialPieceArr2);
   }
 
   useEffect(() => {
@@ -577,18 +572,33 @@ function Chessboard() {
       Board.push(<Square key={`${j},${i}`} number={num} image={imageSrc}/>)
     }
   }
-  // console.log("")
 
   // render the chessboard and pieces
   return (
-  <div 
-  ref={chessboardRef}
-  onMouseDown={(e) => handleMouseDown(e, chessboardRef)}
-  onMouseMove={(e) => handleMouseMove(e, chessboardRef)}
-  onMouseUp={(e) => handleMouseUp(e, pieceArr, setPieceArr, chessboardRef)}
-  id="Chessboard">
-    {Board}
-    </div>
+    <>
+      <div id="pawn-promotion"
+      style={
+        selectedPiece
+          ? {
+              top: `${selectedPiece.style.top}px`,
+              left: `${selectedPiece.style.left}px`,
+            }
+          : {} // No style when selectedPiece is falsy
+      }>
+        <img src={`images/${turn}QUEEN.png`} alt={`${turn} QUEEN`}/>
+        <img src={`images/${turn}KNIGHT.png`} alt={`${turn} KNIGHT`}/>
+        <img src={`images/${turn}ROOK.png`} alt={`${turn} ROOK`}/>
+        <img src={`images/${turn}BISHOP.png`} alt={`${turn} BISHOP`}/>
+      </div>
+      <div 
+      ref={chessboardRef}
+      onMouseDown={(e) => handleMouseDown(e, chessboardRef)}
+      onMouseMove={(e) => handleMouseMove(e, chessboardRef)}
+      onMouseUp={(e) => handleMouseUp(e, pieceArr, setPieceArr, chessboardRef)}
+      id="Chessboard">
+        {Board}
+        </div>
+    </>
     );
 }
 
