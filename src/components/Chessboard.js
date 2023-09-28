@@ -64,10 +64,10 @@ let shortCastelW = true;
 let shortCastelB = true;
 
 
-function checkIfLegalMove(originalSquare, targetSquare, piece, pieceArr, setPieceArr) {
+function checkIfLegalMove(originalSquare, targetSquare, piece, pieceArr, setPieceArr, modalRef) {
   const pieceType = piece.pieceType;
   if (pieceType === PAWN) {
-    return checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, piece.color, setPieceArr);
+    return checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, piece.color, setPieceArr, modalRef);
   } else if (pieceType === ROOK) {
     return checkIfLegalRookMove(originalSquare, targetSquare, pieceArr);
   } else if (pieceType === KNIGHT) {
@@ -94,7 +94,7 @@ function checkIfLegalMove(originalSquare, targetSquare, piece, pieceArr, setPiec
 //   return ! isUnderAttack(king.x, king.y, attackingColor, pieceArr, setPieceArr); // return true if there is no check, false otherwise
 // }
 
-function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, setPieceArr) {
+function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, setPieceArr, modalRef) {
   const targetX = targetSquare.x;
   const targetY = targetSquare.y;
 
@@ -106,10 +106,15 @@ function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, set
 
   // check for promotion
   const promotionRank = turn === WHITE ? board_height - 1 : 0;
-  if (targetSquare.y === promotionRank) {
-    const updatedPieceArr = [...pieceArr];
-    updatedPieceArr[originalSquare.x][originalSquare.y].pieceType = QUEEN;
-    setPieceArr(updatedPieceArr);
+  if ((targetSquare.y === promotionRank) && 
+    ((Math.abs(targetX - currentX) === 1 &&
+    targetY === currentY + direction &&
+    isOccupiedByOpponent(targetX, targetY, pieceArr)) || 
+    (targetX === currentX &&
+    targetY === currentY + direction &&
+    !isOccupied(targetX, targetY, pieceArr)))
+  ) {
+    modalRef.current?.classList.remove("nullified")
     return true
   }
 
@@ -345,7 +350,15 @@ function checkIfLegalKingMove(originalSquare, targetSquare, pieceArr, setPieceAr
   return false;
 }
 
-function isUnderAttack(attckedSquareX, attckedSquareY, attackingColor, pieceArr, setPieceArr) {
+function promote(pieceType, pieceArr, setPieceArr, modalRef) {
+  const updatedPieceArr = pieceArr.map(row => row.map(element => (element === null? null :{ ...element })));
+  const promotedPawnKey = lastMove.targetKey
+  updatedPieceArr[promotedPawnKey.x][promotedPawnKey.y].pieceType = pieceType;
+  setPieceArr(updatedPieceArr);
+  modalRef.current?.classList.add("nullified")
+}
+
+function isUnderAttack(attckedSquareX, attckedSquareY, attackingColor, pieceArr, setPieceArr, modalRef) {
   // iterate through the board
   for (let col = 0; col < board_width; col++) {
     for (let row = 0; row < board_height; row++) {
@@ -359,7 +372,7 @@ function isUnderAttack(attckedSquareX, attckedSquareY, attackingColor, pieceArr,
         }
         const attckedSquare = new Coordinates(attckedSquareX, attckedSquareY);
         const originalSquare = new Coordinates(piece.x, piece.y)
-        if (checkIfLegalMove(originalSquare, attckedSquare, piece, pieceArr, setPieceArr)) {
+        if (checkIfLegalMove(originalSquare, attckedSquare, piece, pieceArr, setPieceArr, modalRef)) {
           return true; // square is under attack
         }
       }
@@ -443,7 +456,7 @@ function handleMouseMove(e, chessboardRef) {
     }
 }
 
-function handleMouseUp(e, pieceArr, setPieceArr, chessboardRef) {
+function handleMouseUp(e, pieceArr, setPieceArr, chessboardRef, modalRef) {
   // get the target element and its boundries
   const elem = e.target;
   const { left, top } = elem.getBoundingClientRect();
@@ -471,7 +484,7 @@ function handleMouseUp(e, pieceArr, setPieceArr, chessboardRef) {
       // find the index of the selected piece in the pieceArr
       const prevX = originalKey.x;
       const prevY = originalKey.y;
-      if (checkIfLegalMove(originalKey, targetSquare, pieceArr[prevX][prevY], pieceArr, setPieceArr)) {
+      if (checkIfLegalMove(originalKey, targetSquare, pieceArr[prevX][prevY], pieceArr, setPieceArr, modalRef)) {
         // update the lastMove object
         const pieceType = getPieceTypeFromStyle(selectedPiece.style.backgroundImage);
         lastMove.pieceType = pieceType.substring(1);
@@ -515,21 +528,10 @@ function handleMouseUp(e, pieceArr, setPieceArr, chessboardRef) {
   }
 }
 
-// function useStateWithLogging(initialValue) {
-//   const [state, setState] = useState(initialValue);
-
-//   const setStateWithLogging = (newValue) => {
-//     console.log(state);
-//     //console.log(state[0]);
-//     setState(newValue);
-//   };
-
-//   return [state, setStateWithLogging];
-// }
-
 function Chessboard() {
   const [pieceArr, setPieceArr] = useState(initialPieceArr); // state (2D array) to keep track of the board
   const chessboardRef = useRef(null); // reference to the chessboard div element
+  const modalRef = useRef(null); // reference to the promotion modal div element
 
   // function to set the initial positions of the chess pieces
   function setInitialPos() {
@@ -556,6 +558,7 @@ function Chessboard() {
     setPieceArr(initialPieceArr2);
   }
 
+  // run setInitialPos only once
   useEffect(() => {
     setInitialPos();
   }, []);
@@ -572,29 +575,24 @@ function Chessboard() {
       Board.push(<Square key={`${j},${i}`} number={num} image={imageSrc}/>)
     }
   }
+  const color = turn === WHITE ? BLACK : WHITE
 
   // render the chessboard and pieces
   return (
     <>
-      <div id="pawn-promotion"
-      style={
-        selectedPiece
-          ? {
-              top: `${selectedPiece.style.top}px`,
-              left: `${selectedPiece.style.left}px`,
-            }
-          : {} // No style when selectedPiece is falsy
-      }>
-        <img src={`images/${turn}QUEEN.png`} alt={`${turn} QUEEN`}/>
-        <img src={`images/${turn}KNIGHT.png`} alt={`${turn} KNIGHT`}/>
-        <img src={`images/${turn}ROOK.png`} alt={`${turn} ROOK`}/>
-        <img src={`images/${turn}BISHOP.png`} alt={`${turn} BISHOP`}/>
+      <div id="pawn-promotion" className="nullified" ref={modalRef}>
+        <div className="modal-body">
+          <img onClick={() => promote(QUEEN, pieceArr, setPieceArr, modalRef, lastMove)} src={`images/${color}QUEEN.png`} alt={`${color} QUEEN`}/>
+          <img onClick={() => promote(KNIGHT, pieceArr, setPieceArr, modalRef, lastMove)} src={`images/${color}KNIGHT.png`} alt={`${color} KNIGHT`}/>
+          <img onClick={() => promote(ROOK, pieceArr, setPieceArr, modalRef, lastMove)} src={`images/${color}ROOK.png`} alt={`${color} ROOK`}/>
+          <img onClick={() => promote(BISHOP, pieceArr, setPieceArr, modalRef, lastMove)} src={`images/${color}BISHOP.png`} alt={`${color} BISHOP`}/>
+        </div>
       </div>
       <div 
       ref={chessboardRef}
       onMouseDown={(e) => handleMouseDown(e, chessboardRef)}
       onMouseMove={(e) => handleMouseMove(e, chessboardRef)}
-      onMouseUp={(e) => handleMouseUp(e, pieceArr, setPieceArr, chessboardRef)}
+      onMouseUp={(e) => handleMouseUp(e, pieceArr, setPieceArr, chessboardRef, modalRef)}
       id="Chessboard">
         {Board}
         </div>
