@@ -3,6 +3,7 @@ import './Chessboard.css';
 import Piece from './Piece';
 import Square from './square.js';
 import { retrieveKeyFromCoordinates, getPieceTypeFromStyle, getColor } from './utilities.js';
+import _ from 'lodash';
 
 // class that holds the coordinates of a square in the chess board
 // the x coordinate is the columns of the board
@@ -82,12 +83,12 @@ function checkIfLegalMove(originalSquare, targetSquare, piece, turn, pieceArr, s
     possibleMove = checkIfLegalKingMove(originalSquare, targetSquare, color, pieceArr, setPieceArr, modalRef);
   }
   if (possibleMove) {
-    const updatedPieceArr = pieceArr.map(row => row.map(element => (element === null? null :{ ...element })));
+    const updatedPieceArr = pieceArr.map(row => row.map(element => (element === null? null : _.cloneDeep(element))));
     const newX = targetSquare.x
     const newY = targetSquare.y
     const prevX = originalSquare.x
     const prevY = originalSquare.y
-    updatedPieceArr[newX][newY] = pieceArr[prevX][prevY]
+    updatedPieceArr[newX][newY] = updatedPieceArr[prevX][prevY]
     updatedPieceArr[newX][newY].x = newX
     updatedPieceArr[newX][newY].y = newY
     updatedPieceArr[prevX][prevY] = null
@@ -133,7 +134,6 @@ function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, mod
     targetY === currentY + direction &&
     !isOccupied(targetX, targetY, pieceArr)))
   ) {
-    console.log(modalRef)
     modalRef.current?.classList.remove("nullified")
     return true
   }
@@ -305,8 +305,8 @@ function checkIfLegalKingMove(originalSquare, targetSquare, color, pieceArr, set
   // check for regular king move - one square
   if ((deltaX === 1 && deltaY === 0) || (deltaX === 0 && deltaY === 1) || (deltaX === 1 && deltaY === 1)) {
     if (!isOccupied(targetX, targetY, pieceArr) || isOccupiedByOpponent(targetX, targetY, pieceArr, attackingColor)) {
-      const updatedPieceArr = pieceArr.map(row => row.map(element => (element === null? null :JSON.parse(JSON.stringify(element)))));
-      updatedPieceArr[targetX][targetY] = pieceArr[currentX][currentY]
+      const updatedPieceArr = pieceArr.map(row => row.map(element => (element === null? null : _.cloneDeep(element))));
+      updatedPieceArr[targetX][targetY] = updatedPieceArr[currentX][currentY]
       updatedPieceArr[targetX][targetY].x = targetX
       updatedPieceArr[targetX][targetY].y = targetY
       updatedPieceArr[currentX][currentY] = null
