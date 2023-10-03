@@ -57,44 +57,62 @@ let originalKey = null;
 let originalPositionLeft = null;
 let originalPositionTop = null;
 let lastMove = new LastMove(); // for en passant purposes
-let turn = WHITE;
 let longCastelW = true;
 let longCastelB = true;
 let shortCastelW = true;
 let shortCastelB = true;
 
 
-function checkIfLegalMove(originalSquare, targetSquare, piece, pieceArr, setPieceArr, modalRef) {
+function checkIfLegalMove(originalSquare, targetSquare, piece, turn, pieceArr, setPieceArr, modalRef) {
+  const color = turn;
   const pieceType = piece.pieceType;
+  let possibleMove = false;
+  let check = false;
   if (pieceType === PAWN) {
-    return checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, piece.color, setPieceArr, modalRef);
+    possibleMove = checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, modalRef);
   } else if (pieceType === ROOK) {
-    return checkIfLegalRookMove(originalSquare, targetSquare, pieceArr);
+    possibleMove = checkIfLegalRookMove(originalSquare, targetSquare, color, pieceArr);
   } else if (pieceType === KNIGHT) {
-    return checkIfLegalKnightMove(originalSquare, targetSquare, pieceArr);
+    possibleMove = checkIfLegalKnightMove(originalSquare, targetSquare, color, pieceArr);
   } else if (pieceType === BISHOP) {
-    return checkIfLegalBishopMove(originalSquare, targetSquare, pieceArr);
+    possibleMove = checkIfLegalBishopMove(originalSquare, targetSquare, color, pieceArr);
   } else if (pieceType === QUEEN) {
-    return checkIfLegalQueenMove(originalSquare, targetSquare, pieceArr);
+    possibleMove = checkIfLegalQueenMove(originalSquare, targetSquare, color, pieceArr);
   } else if (pieceType === KING) {
-    return checkIfLegalKingMove(originalSquare, targetSquare, pieceArr, setPieceArr);
-  } 
+    possibleMove = checkIfLegalKingMove(originalSquare, targetSquare, color, pieceArr, setPieceArr, modalRef);
+  }
+  if (possibleMove) {
+    const updatedPieceArr = pieceArr.map(row => row.map(element => (element === null? null :{ ...element })));
+    const newX = targetSquare.x
+    const newY = targetSquare.y
+    const prevX = originalSquare.x
+    const prevY = originalSquare.y
+    updatedPieceArr[newX][newY] = pieceArr[prevX][prevY]
+    updatedPieceArr[newX][newY].x = newX
+    updatedPieceArr[newX][newY].y = newY
+    updatedPieceArr[prevX][prevY] = null
+    check = check4Check(updatedPieceArr, setPieceArr, turn)
+  }
+
+  return possibleMove && check
 }
 
-// function checkIfNotCheck(pieceArr, setPieceArr) {
-//   const attackingColor = turn === WHITE ? BLACK : WHITE;
+function check4Check(pieceArr, setPieceArr, turn) {
+  const attackingColor = turn === WHITE ? BLACK : WHITE;
 
-//   let king = null;
-//   for (const piece of pieceArr) {
-//     if (piece.color === turn && piece.pieceType === KING) {
-//       king = piece;
-//     }
-//   }
+  let king = null;
+  for (let col = 0; col < board_width; col++) {
+    for (let row = 0; row < board_height; row++) {
+      const piece = pieceArr[col][row]
+      if (piece && piece.color === turn && piece.pieceType === KING) {
+        king = piece;
+      }
+    }
+  }
+  return ! isUnderAttack(king.x, king.y, attackingColor, pieceArr, setPieceArr); // return true if there is no check, false otherwise
+}
 
-//   return ! isUnderAttack(king.x, king.y, attackingColor, pieceArr, setPieceArr); // return true if there is no check, false otherwise
-// }
-
-function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, setPieceArr, modalRef) {
+function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, modalRef) {
   const targetX = targetSquare.x;
   const targetY = targetSquare.y;
 
@@ -103,17 +121,19 @@ function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, set
 
   // determine the direction in which the pawn can move based on its color
   const direction = color === WHITE ? 1 : -1;
+  const attackingColor = color === WHITE ? BLACK : WHITE;
 
   // check for promotion
-  const promotionRank = turn === WHITE ? board_height - 1 : 0;
+  const promotionRank = color === WHITE ? board_height - 1 : 0;
   if ((targetSquare.y === promotionRank) && 
     ((Math.abs(targetX - currentX) === 1 &&
     targetY === currentY + direction &&
-    isOccupiedByOpponent(targetX, targetY, pieceArr)) || 
+    isOccupiedByOpponent(targetX, targetY, pieceArr, attackingColor)) || 
     (targetX === currentX &&
     targetY === currentY + direction &&
     !isOccupied(targetX, targetY, pieceArr)))
   ) {
+    console.log(modalRef)
     modalRef.current?.classList.remove("nullified")
     return true
   }
@@ -138,7 +158,7 @@ function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, set
   if (
     Math.abs(targetX - currentX) === 1 &&
     targetY === currentY + direction &&
-    isOccupiedByOpponent(targetX, targetY, pieceArr)
+    isOccupiedByOpponent(targetX, targetY, pieceArr, attackingColor)
   ) {
     return true; // Legal move, diagonal capture of an opponent's piece
   }
@@ -161,12 +181,14 @@ function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, set
   return false; // Move is not legal for the pawn
 }
 
-function checkIfLegalRookMove(originalSquare, targetSquare, pieceArr) {
+function checkIfLegalRookMove(originalSquare, targetSquare, color, pieceArr) {
   const targetX = targetSquare.x;
   const targetY = targetSquare.y;
 
   const currentX = originalSquare.x;
   const currentY = originalSquare.y;
+
+  const attackingColor = color === WHITE ? BLACK : WHITE
 
   // handle vertical movement
   if (targetX === currentX && targetY !== currentY) {
@@ -180,7 +202,7 @@ function checkIfLegalRookMove(originalSquare, targetSquare, pieceArr) {
     if (!isOccupied(targetX, targetY, pieceArr)) {
       return true; // free to move to this square
     }
-    if (isOccupiedByOpponent(targetX, targetY, pieceArr)) {
+    if (isOccupiedByOpponent(targetX, targetY, pieceArr, attackingColor)) {
       return true; // free to capture
     }
   }
@@ -197,38 +219,42 @@ function checkIfLegalRookMove(originalSquare, targetSquare, pieceArr) {
     if (!isOccupied(targetX, targetY, pieceArr)) {
       return true; // free to move to this square
     }
-    if (isOccupiedByOpponent(targetX, targetY, pieceArr)) {
+    if (isOccupiedByOpponent(targetX, targetY, pieceArr, attackingColor)) {
       return true; // free to capture
     }
   }
   return false;
 }
 
-function checkIfLegalKnightMove(originalSquare, targetSquare, pieceArr) {
+function checkIfLegalKnightMove(originalSquare, targetSquare, color, pieceArr) {
   const targetX = targetSquare.x;
   const targetY = targetSquare.y;
 
   const currentX = originalSquare.x;
   const currentY = originalSquare.y;
+
+  const attackingColor = color === WHITE ? BLACK : WHITE
 
   // check if the move is in the L-shaped pattern of the knight
   if ((Math.abs(currentX - targetX) === 1 && Math.abs(currentY - targetY) === 2) ||
       (Math.abs(currentX - targetX) === 2 && Math.abs(currentY - targetY) === 1)) 
       {
         // check if the target square is unoccupied or occupied by an opponent's piece
-        if (!isOccupied(targetX, targetY, pieceArr) || isOccupiedByOpponent(targetX, targetY, pieceArr)) {
+        if (!isOccupied(targetX, targetY, pieceArr) || isOccupiedByOpponent(targetX, targetY, pieceArr, attackingColor)) {
           return true;
         }
       }
       return false
 }
 
-function checkIfLegalBishopMove(originalSquare, targetSquare, pieceArr) {
+function checkIfLegalBishopMove(originalSquare, targetSquare, color, pieceArr) {
   const targetX = targetSquare.x;
   const targetY = targetSquare.y;
 
   const currentX = originalSquare.x;
   const currentY = originalSquare.y;
+
+  const attackingColor = color === WHITE ? BLACK : WHITE
 
   // calculate the horizontal and vertical distance between the current position and the target position
   const deltaX = Math.abs(targetX - currentX);
@@ -253,18 +279,18 @@ function checkIfLegalBishopMove(originalSquare, targetSquare, pieceArr) {
     }
   }
   // check if the target square is unoccupied or occupied by an opponent's piece
-  if (!isOccupied(targetX, targetY, pieceArr) || isOccupiedByOpponent(targetX, targetY, pieceArr)) {
+  if (!isOccupied(targetX, targetY, pieceArr) || isOccupiedByOpponent(targetX, targetY, pieceArr, attackingColor)) {
     return true;
   }
 return false;
 }
 
-function checkIfLegalQueenMove(originalSquare, targetSquare, pieceArr) {
-  return checkIfLegalRookMove(originalSquare, targetSquare, pieceArr) ||
-         checkIfLegalBishopMove(originalSquare, targetSquare, pieceArr);
+function checkIfLegalQueenMove(originalSquare, targetSquare, color, pieceArr) {
+  return checkIfLegalRookMove(originalSquare, targetSquare, color, pieceArr) ||
+         checkIfLegalBishopMove(originalSquare, targetSquare, color, pieceArr);
 }
 
-function checkIfLegalKingMove(originalSquare, targetSquare, pieceArr, setPieceArr) {
+function checkIfLegalKingMove(originalSquare, targetSquare, color, pieceArr, setPieceArr, modalRef) {
   const targetX = targetSquare.x;
   const targetY = targetSquare.y;
 
@@ -274,15 +300,20 @@ function checkIfLegalKingMove(originalSquare, targetSquare, pieceArr, setPieceAr
   const deltaX = Math.abs(targetX - currentX);
   const deltaY = Math.abs(targetY - currentY);
 
-  const attackingColor = turn === WHITE ? BLACK : WHITE;
+  const attackingColor = color === WHITE ? BLACK : WHITE;
 
   // check for regular king move - one square
   if ((deltaX === 1 && deltaY === 0) || (deltaX === 0 && deltaY === 1) || (deltaX === 1 && deltaY === 1)) {
-    if (!isOccupied(targetX, targetY, pieceArr) || isOccupiedByOpponent(targetX, targetY, pieceArr)) {
-      if (isUnderAttack(targetX, targetY, attackingColor, pieceArr, setPieceArr)) {
+    if (!isOccupied(targetX, targetY, pieceArr) || isOccupiedByOpponent(targetX, targetY, pieceArr, attackingColor)) {
+      const updatedPieceArr = pieceArr.map(row => row.map(element => (element === null? null :JSON.parse(JSON.stringify(element)))));
+      updatedPieceArr[targetX][targetY] = pieceArr[currentX][currentY]
+      updatedPieceArr[targetX][targetY].x = targetX
+      updatedPieceArr[targetX][targetY].y = targetY
+      updatedPieceArr[currentX][currentY] = null
+      if (isUnderAttack(targetX, targetY, attackingColor, updatedPieceArr, setPieceArr, modalRef)) {
         return false;
       }
-      if (turn === WHITE) {
+      if (color === WHITE) {
         longCastelW = false;
         shortCastelW = false;
       } else {
@@ -295,12 +326,12 @@ function checkIfLegalKingMove(originalSquare, targetSquare, pieceArr, setPieceAr
 
   // handle short castle
   if ((deltaX === 2) && (deltaY === 0) && (currentX < targetX)) {
-    if (turn === WHITE ? shortCastelW : shortCastelB) {
+    if (color === WHITE ? shortCastelW : shortCastelB) {
       if (!isOccupied(currentX + 1, currentY, pieceArr) && !isOccupied(currentX + 2, currentY, pieceArr)) {
-        if (!isUnderAttack(currentX, currentY, attackingColor, pieceArr, setPieceArr) &&
-             !isUnderAttack(currentX + 1, currentY, attackingColor, pieceArr, setPieceArr) && 
-             !isUnderAttack(currentX + 2, currentY, attackingColor, pieceArr, setPieceArr)) {
-              if (turn === WHITE) {
+        if (!isUnderAttack(currentX, currentY, attackingColor, pieceArr, setPieceArr, modalRef) &&
+             !isUnderAttack(currentX + 1, currentY, attackingColor, pieceArr, setPieceArr, modalRef) && 
+             !isUnderAttack(currentX + 2, currentY, attackingColor, pieceArr, setPieceArr, modalRef)) {
+              if (color === WHITE) {
                 longCastelW = false;
                 shortCastelW = false;
               } else {
@@ -309,8 +340,8 @@ function checkIfLegalKingMove(originalSquare, targetSquare, pieceArr, setPieceAr
               }
 
               // move the rook
-              const rookOriginalKey = new Coordinates(board_width - 1, (turn === WHITE) ? 0 : 7)
-              const rookTargetKey = new Coordinates(targetX - 1, (turn === WHITE) ? 0 : 7)
+              const rookOriginalKey = new Coordinates(board_width - 1, (color === WHITE) ? 0 : 7)
+              const rookTargetKey = new Coordinates(targetX - 1, (color === WHITE) ? 0 : 7)
               movePiece(rookOriginalKey, rookTargetKey, pieceArr, setPieceArr)
 
           return true;
@@ -321,14 +352,14 @@ function checkIfLegalKingMove(originalSquare, targetSquare, pieceArr, setPieceAr
 
   // handle long castl
   if ((deltaX === 2) && (deltaY === 0) && (targetX < currentX)) {
-    if (turn === WHITE ? longCastelW : longCastelB) {
+    if (color === WHITE ? longCastelW : longCastelB) {
       if (!isOccupied(currentX - 1, currentY, pieceArr) &&
        !isOccupied(currentX - 2, currentY, pieceArr) &&
        !isOccupied(currentX - 3, currentY, pieceArr)) {
-        if (!isUnderAttack(currentX, currentY, attackingColor, pieceArr, setPieceArr) &&
-             !isUnderAttack(currentX + 1, currentY, attackingColor, pieceArr, setPieceArr) && 
-             !isUnderAttack(currentX + 2, currentY, attackingColor, pieceArr, setPieceArr)) {
-              if (turn === WHITE) {
+        if (!isUnderAttack(currentX, currentY, attackingColor, pieceArr, setPieceArr, modalRef) &&
+             !isUnderAttack(currentX + 1, currentY, attackingColor, pieceArr, setPieceArr, modalRef) && 
+             !isUnderAttack(currentX + 2, currentY, attackingColor, pieceArr, setPieceArr, modalRef)) {
+              if (color === WHITE) {
                 longCastelW = false;
                 shortCastelW = false;
               } else {
@@ -337,8 +368,8 @@ function checkIfLegalKingMove(originalSquare, targetSquare, pieceArr, setPieceAr
               }
 
               // move the rook
-              const rookOriginalKey = new Coordinates(0, (turn === WHITE) ? 0 : 7)
-              const rookTargetKey = new Coordinates(targetX + 1, (turn === WHITE) ? 0 : 7)
+              const rookOriginalKey = new Coordinates(0, (color === WHITE) ? 0 : 7)
+              const rookTargetKey = new Coordinates(targetX + 1, (color === WHITE) ? 0 : 7)
               movePiece(rookOriginalKey, rookTargetKey, pieceArr, setPieceArr)
 
           return true;
@@ -346,7 +377,6 @@ function checkIfLegalKingMove(originalSquare, targetSquare, pieceArr, setPieceAr
       }
     }
   }
-  
   return false;
 }
 
@@ -365,20 +395,51 @@ function isUnderAttack(attckedSquareX, attckedSquareY, attackingColor, pieceArr,
       const piece = pieceArr[col][row]
       if (piece && piece.color === attackingColor) { // check that it is an opponent's piece
       // check if the opponent's piece can legally move to the target square
-        if (piece.pieceType === KING) {
-          if (Math.abs(piece.x - attckedSquareX) <= 1 &&  Math.abs(piece.y - attckedSquareY) <= 1) {
-            return true;
-          }
-        }
         const attckedSquare = new Coordinates(attckedSquareX, attckedSquareY);
         const originalSquare = new Coordinates(piece.x, piece.y)
-        if (checkIfLegalMove(originalSquare, attckedSquare, piece, pieceArr, setPieceArr, modalRef)) {
-          return true; // square is under attack
+        let attacked = null
+        switch (piece.pieceType) {
+          case PAWN:
+            attacked = checkIfLegalPawnMove(originalSquare, attckedSquare, pieceArr, attackingColor, modalRef)
+            if (attacked) {
+              return true
+            }
+            continue
+          case KNIGHT:
+            attacked = checkIfLegalKnightMove(originalSquare, attckedSquare, attackingColor, pieceArr)
+            if (attacked) {
+              return true
+            }
+            continue
+          case BISHOP:
+            attacked = checkIfLegalBishopMove(originalSquare, attckedSquare, attackingColor, pieceArr)
+            if (attacked) {
+              return true
+            }
+            continue
+          case ROOK:
+            attacked = checkIfLegalRookMove(originalSquare, attckedSquare, attackingColor, pieceArr)
+            if (attacked) {
+              return true
+            }
+            continue
+          case QUEEN:
+            attacked = checkIfLegalQueenMove(originalSquare, attckedSquare, attackingColor, pieceArr)
+            if (attacked) {
+              return true
+            }
+            continue
+          case KING:
+            attacked = checkIfLegalKingMove(originalSquare, attckedSquare, pieceArr, setPieceArr)
+            if (attacked) {
+              return true
+            }
+            continue
+          default:
         }
       }
     }
   }
-
   return false; // square is not under attack
 }
 
@@ -408,11 +469,11 @@ function isOccupied(x, y, pieceArr) {
 }
 
 // helper function to check if a square is occupied by an opponent piece
-function isOccupiedByOpponent(x, y, pieceArr) {
-  return pieceArr[x][y] !== null && pieceArr[x][y].color !== turn;
+function isOccupiedByOpponent(x, y, pieceArr, attackingColor) {
+  return pieceArr[x][y] !== null && pieceArr[x][y].color === attackingColor;
 }
 
-function handleMouseDown(e, chessboardRef) {
+function handleMouseDown(e, turn, chessboardRef) {
     const elem = e.target;
     const color = getColor(elem.style.backgroundImage) // return "W" or "B"
 
@@ -456,7 +517,7 @@ function handleMouseMove(e, chessboardRef) {
     }
 }
 
-function handleMouseUp(e, pieceArr, setPieceArr, chessboardRef, modalRef) {
+function handleMouseUp(e, pieceArr, setPieceArr, turn, setTurn, chessboardRef, modalRef) {
   // get the target element and its boundries
   const elem = e.target;
   const { left, top } = elem.getBoundingClientRect();
@@ -484,7 +545,8 @@ function handleMouseUp(e, pieceArr, setPieceArr, chessboardRef, modalRef) {
       // find the index of the selected piece in the pieceArr
       const prevX = originalKey.x;
       const prevY = originalKey.y;
-      if (checkIfLegalMove(originalKey, targetSquare, pieceArr[prevX][prevY], pieceArr, setPieceArr, modalRef)) {
+      const legal = checkIfLegalMove(originalKey, targetSquare, pieceArr[prevX][prevY], turn, pieceArr, setPieceArr, modalRef)
+      if (legal) {
         // update the lastMove object
         const pieceType = getPieceTypeFromStyle(selectedPiece.style.backgroundImage);
         lastMove.pieceType = pieceType.substring(1);
@@ -511,6 +573,7 @@ function handleMouseUp(e, pieceArr, setPieceArr, chessboardRef, modalRef) {
   
         // switch player turn after the move
         turn = turn === WHITE ? BLACK : WHITE; // switch turns
+        setTurn(turn)
   
         } else {
         // abort move - return the selected piece to its original location
@@ -532,6 +595,8 @@ function Chessboard() {
   const [pieceArr, setPieceArr] = useState(initialPieceArr); // state (2D array) to keep track of the board
   const chessboardRef = useRef(null); // reference to the chessboard div element
   const modalRef = useRef(null); // reference to the promotion modal div element
+  const [turn, setTurn] = useState(WHITE);
+  const color = turn === WHITE ? BLACK : WHITE
 
   // function to set the initial positions of the chess pieces
   function setInitialPos() {
@@ -575,7 +640,6 @@ function Chessboard() {
       Board.push(<Square key={`${j},${i}`} number={num} image={imageSrc}/>)
     }
   }
-  const color = turn === WHITE ? BLACK : WHITE
 
   // render the chessboard and pieces
   return (
@@ -590,9 +654,9 @@ function Chessboard() {
       </div>
       <div 
       ref={chessboardRef}
-      onMouseDown={(e) => handleMouseDown(e, chessboardRef)}
+      onMouseDown={(e) => handleMouseDown(e, turn, chessboardRef)}
       onMouseMove={(e) => handleMouseMove(e, chessboardRef)}
-      onMouseUp={(e) => handleMouseUp(e, pieceArr, setPieceArr, chessboardRef, modalRef)}
+      onMouseUp={(e) => handleMouseUp(e, pieceArr, setPieceArr, turn, setTurn, chessboardRef, modalRef)}
       id="Chessboard">
         {Board}
         </div>
