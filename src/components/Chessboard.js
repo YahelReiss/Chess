@@ -3,55 +3,12 @@ import './Chessboard.css';
 import Piece from './Piece';
 import Square from './square.js';
 import { retrieveKeyFromCoordinates, getPieceTypeFromStyle, getColor } from './utilities.js';
+import {BOARD_WIDTH, BOARD_HEIGHT, INITIAL_BOARD, Coordinates, LastMove, Color, PieceType} from "../constants"
 import _ from 'lodash';
-
-// class that holds the coordinates of a square in the chess board
-// the x coordinate is the columns of the board
-// the y coordinate is the rows of the board
-class Coordinates {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-}
-
-// class to store information about the last move
-// pieceType - string with the name of the piece, e.g "bishop"
-// originalKey - object of type Coordinates that holds the x,y for where the piece came from
-// targetKey - object of type Coordinates that holds the x,y for where the piece is going to
-class LastMove {
-  constructor(pieceType, originalKey, targetKey) {
-    this.pieceType = pieceType;
-    this.originalKey = originalKey;
-    this.targetKey = targetKey;
-  }
-}
-
-// enum for Colors
-const Color = {
-  WHITE: 'W',
-  BLACK: 'B',
-};
 
 // destructuring assignment to extract values
 const { WHITE, BLACK } = Color;
-
-// enum for Piece Types
-const PieceType = {
-  PAWN: 'pawn',
-  ROOK: 'rook',
-  KNIGHT: 'knight',
-  BISHOP: 'bishop',
-  QUEEN: 'queen',
-  KING: 'king',
-};
-
-// destructuring assignment to extract values
 const { PAWN, ROOK, KNIGHT, BISHOP, QUEEN, KING } = PieceType;
-
-const board_width = 8;
-const board_height = 8;
-const initialPieceArr = new Array(board_width).fill(null).map(() => new Array(board_height).fill(null));
 
 let selectedPiece = null;
 let originalKey = null;
@@ -102,8 +59,8 @@ function check4Check(pieceArr, setPieceArr, turn) {
   const attackingColor = turn === WHITE ? BLACK : WHITE;
 
   let king = null;
-  for (let col = 0; col < board_width; col++) {
-    for (let row = 0; row < board_height; row++) {
+  for (let col = 0; col < BOARD_WIDTH; col++) {
+    for (let row = 0; row < BOARD_HEIGHT; row++) {
       const piece = pieceArr[col][row]
       if (piece && piece.color === turn && piece.pieceType === KING) {
         king = piece;
@@ -125,7 +82,7 @@ function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, mod
   const attackingColor = color === WHITE ? BLACK : WHITE;
 
   // check for promotion
-  const promotionRank = color === WHITE ? board_height - 1 : 0;
+  const promotionRank = color === WHITE ? BOARD_HEIGHT - 1 : 0;
   if ((targetSquare.y === promotionRank) && 
     ((Math.abs(targetX - currentX) === 1 &&
     targetY === currentY + direction &&
@@ -145,7 +102,7 @@ function checkIfLegalPawnMove(originalSquare, targetSquare, pieceArr, color, mod
 
   // check for two squares forward validity 
   if (
-    currentY === (color === WHITE ? 1 : board_height - 2) && // pawn's first move
+    currentY === (color === WHITE ? 1 : BOARD_HEIGHT - 2) && // pawn's first move
     targetX === currentX &&
     targetY === currentY + 2 * direction &&
     !isOccupied(targetX, targetY, pieceArr) &&
@@ -340,7 +297,7 @@ function checkIfLegalKingMove(originalSquare, targetSquare, color, pieceArr, set
               }
 
               // move the rook
-              const rookOriginalKey = new Coordinates(board_width - 1, (color === WHITE) ? 0 : 7)
+              const rookOriginalKey = new Coordinates(BOARD_WIDTH - 1, (color === WHITE) ? 0 : 7)
               const rookTargetKey = new Coordinates(targetX - 1, (color === WHITE) ? 0 : 7)
               movePiece(rookOriginalKey, rookTargetKey, pieceArr, setPieceArr)
 
@@ -390,8 +347,8 @@ function promote(pieceType, pieceArr, setPieceArr, modalRef) {
 
 function isUnderAttack(attckedSquareX, attckedSquareY, attackingColor, pieceArr, setPieceArr, modalRef) {
   // iterate through the board
-  for (let col = 0; col < board_width; col++) {
-    for (let row = 0; row < board_height; row++) {
+  for (let col = 0; col < BOARD_WIDTH; col++) {
+    for (let row = 0; row < BOARD_HEIGHT; row++) {
       const piece = pieceArr[col][row]
       if (piece && piece.color === attackingColor) { // check that it is an opponent's piece
       // check if the opponent's piece can legally move to the target square
@@ -533,7 +490,7 @@ function handleMouseUp(e, pieceArr, setPieceArr, turn, setTurn, chessboardRef, m
   const key = retrieveKeyFromCoordinates(x - offsetX, y - offsetY);
 
   // check if the target square is (not) within the bounds of the board
-  if (key[0] < 0 || key[0] >= board_width || key[1] < 0 || key[1] >= board_height) {
+  if (key[0] < 0 || key[0] >= BOARD_WIDTH || key[1] < 0 || key[1] >= BOARD_HEIGHT) {
     // abort move - return the selected piece to its original location
     selectedPiece.style.position = "absolute";
     selectedPiece.style.left = originalPositionLeft;
@@ -592,7 +549,7 @@ function handleMouseUp(e, pieceArr, setPieceArr, turn, setTurn, chessboardRef, m
 }
 
 function Chessboard() {
-  const [pieceArr, setPieceArr] = useState(initialPieceArr); // state (2D array) to keep track of the board
+  const [pieceArr, setPieceArr] = useState(INITIAL_BOARD); // state (2D array) to keep track of the board
   const chessboardRef = useRef(null); // reference to the chessboard div element
   const modalRef = useRef(null); // reference to the promotion modal div element
   const [turn, setTurn] = useState(WHITE);
@@ -600,27 +557,27 @@ function Chessboard() {
 
   // function to set the initial positions of the chess pieces
   function setInitialPos() {
-    const initialPieceArr2 = new Array(board_width).fill(null).map(() => new Array(board_height).fill(null));
+    const INITIAL_BOARD2 = new Array(BOARD_WIDTH).fill(null).map(() => new Array(BOARD_HEIGHT).fill(null));
 
     // push pawns
-    for (let i = 0; i < board_width; i++) {
-      initialPieceArr2[i][1] = new Piece(i, 1, WHITE, 'pawn');
-      initialPieceArr2[i][6] = new Piece(i, 6, BLACK, 'pawn');
+    for (let i = 0; i < BOARD_WIDTH; i++) {
+      INITIAL_BOARD2[i][1] = new Piece(i, 1, WHITE, 'pawn');
+      INITIAL_BOARD2[i][6] = new Piece(i, 6, BLACK, 'pawn');
     }
     // push the rest of the pieces
     for (let i = 0; i < 2; i++) {
       const type = i === 0 ? WHITE : BLACK;
       const yPos = i === 0 ? 0 : 7;
-      initialPieceArr2[0][yPos] = new Piece(0, yPos, type, ROOK);
-      initialPieceArr2[7][yPos] = new Piece(7, yPos, type, ROOK);
-      initialPieceArr2[1][yPos] = new Piece(1, yPos, type, KNIGHT);
-      initialPieceArr2[6][yPos] = new Piece(6, yPos, type, KNIGHT);
-      initialPieceArr2[2][yPos] = new Piece(2, yPos, type, BISHOP);
-      initialPieceArr2[5][yPos] = new Piece(5, yPos, type, BISHOP);
-      initialPieceArr2[4][yPos] = new Piece(4, yPos, type, KING);
-      initialPieceArr2[3][yPos] = new Piece(3, yPos, type, QUEEN);
+      INITIAL_BOARD2[0][yPos] = new Piece(0, yPos, type, ROOK);
+      INITIAL_BOARD2[7][yPos] = new Piece(7, yPos, type, ROOK);
+      INITIAL_BOARD2[1][yPos] = new Piece(1, yPos, type, KNIGHT);
+      INITIAL_BOARD2[6][yPos] = new Piece(6, yPos, type, KNIGHT);
+      INITIAL_BOARD2[2][yPos] = new Piece(2, yPos, type, BISHOP);
+      INITIAL_BOARD2[5][yPos] = new Piece(5, yPos, type, BISHOP);
+      INITIAL_BOARD2[4][yPos] = new Piece(4, yPos, type, KING);
+      INITIAL_BOARD2[3][yPos] = new Piece(3, yPos, type, QUEEN);
     }
-    setPieceArr(initialPieceArr2);
+    setPieceArr(INITIAL_BOARD2);
   }
 
   // run setInitialPos only once
@@ -630,8 +587,8 @@ function Chessboard() {
 
   // Generate the XML for the chessboard grid and pieces
   let Board = [];
-  for (let i = board_height - 1; i >= 0; i--) {
-    for (let j = 0; j < board_width; j++) {
+  for (let i = BOARD_HEIGHT - 1; i >= 0; i--) {
+    for (let j = 0; j < BOARD_WIDTH; j++) {
       const num = j + i 
       let imageSrc = undefined;
       if (pieceArr[j][i] !== null) {
